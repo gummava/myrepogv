@@ -1,0 +1,44 @@
+{
+	"name": "dataflow1",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DelimitedText3",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DelimitedText4",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "Select1"
+				},
+				{
+					"name": "Filter1"
+				},
+				{
+					"name": "DerivedColumn1"
+				},
+				{
+					"name": "Window1"
+				},
+				{
+					"name": "Aggregate1"
+				}
+			],
+			"script": "\n\nsource(output(\n\t\tColumn_1 as string,\n\t\tColumn_2 as string,\n\t\tColumn_3 as string,\n\t\tColumn_4 as string,\n\t\tColumn_5 as string,\n\t\tColumn_6 as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false) ~> source1\nsource1 select(mapColumn(\n\t\tmovie = Column_1,\n\t\ttitle = Column_2,\n\t\tgenres = Column_3,\n\t\tyear = Column_4,\n\t\trating = Column_5,\n\t\t{rotten tomato} = Column_6\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> Select1\nSelect1 filter(toInteger(year)>1950) ~> Filter1\nFilter1 derive(PrimaryGenre = iif(locate(\"|\",genres)>1,left(genres,locate(\"|\",genres)-1),genres)) ~> DerivedColumn1\nDerivedColumn1 window(over(year = year,\n\t\tPrimaryGenre = PrimaryGenre),\n\tdesc({rotten tomato}, true),\n\tratingrank = rank()) ~> Window1\nWindow1 aggregate(groupBy(year = year,\n\t\tPrimaryGenre = PrimaryGenre),\n\tAvgRating = avg(toInteger({rotten tomato})),\n\t\tHighestRated = first(title),\n\t\tLowetstRated = last(title),\n\t\tNumberOfmovies = count()) ~> Aggregate1\nAggregate1 sink(input(\n\t\tColumn_1 as string,\n\t\tColumn_2 as string,\n\t\tColumn_3 as string,\n\t\tColumn_4 as string,\n\t\tColumn_5 as string,\n\t\tColumn_6 as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tpartitionBy('hash', 1)) ~> sink1"
+		}
+	}
+}
